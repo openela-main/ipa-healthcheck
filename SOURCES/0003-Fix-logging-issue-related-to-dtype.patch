@@ -1,0 +1,29 @@
+From 0f485a0921a39c08e7259f9b38f0b10e425384a5 Mon Sep 17 00:00:00 2001
+From: root <root@ipa.example.test>
+Date: Mon, 5 Dec 2022 16:17:17 -0500
+Subject: [PATCH] Fix logging issue related to dtype
+
+It is an integer in earlier versions of python3-dns and a class
+in later versions. Log the integer value.
+
+Related: #2099484
+---
+ src/ipahealthcheck/ipa/idns.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ipa/idns.py b/ipa/idns.py
+index e294db2..1adb69d 100644
+--- a/src/ipahealthcheck/ipa/idns.py
++++ b/src/ipahealthcheck/ipa/idns.py
+@@ -176,7 +176,7 @@ class IPADNSSystemRecordsCheck(IPAPlugin):
+         qname = "ipa-ca." + api.env.domain + "."
+         ipa_ca_records = []
+         for dtype in (rdatatype.A, rdatatype.AAAA):
+-            logger.debug("Search DNS for %s records of %s", dtype.name, qname)
++            logger.debug("Search DNS for %s records of %s", dtype, qname)
+             try:
+                 answers = resolve(qname, dtype)
+             except DNSException as e:
+-- 
+2.31.1
+
