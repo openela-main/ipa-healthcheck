@@ -17,7 +17,7 @@
 
 Name:           %{prefix}-healthcheck
 Version:        0.12
-Release:        1%{?dist}
+Release:        4%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPLv3
@@ -27,6 +27,9 @@ Source1:        ipahealthcheck.conf
 
 Patch0001:      0001-Remove-ipaclustercheck.patch
 Patch0002:      0002-Disable-two-failing-tests.patch
+Patch0003:      0003-Skip-AD-domains-with-posix-ranges-in-the-catalog-che.patch
+Patch0004:      0004-Catch-exceptions-during-user-group-name-lookup-in-Fi.patch
+Patch0005:      0005-Don-t-error-in-DogtagCertsConnectivityCheck-with-ext.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -156,6 +159,15 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Mon Jul 24 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-4
+- Error in DogtagCertsConnectivityCheckCA with external CA (#2224595)
+
+* Thu Jul 06 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-3
+- Catch exceptions during user/group name lookup in FileCheck (#2218912)
+
+* Tue Apr 25 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-2
+- Skip AD domains with posix ranges in the catalog check (#2188135)
+
 * Thu Dec 01 2022 Rob Crittenden <rcritten@redhat.com> - 0.12-1
 - Update to upstream 0.12 (#2139531)
 
