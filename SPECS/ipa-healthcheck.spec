@@ -8,7 +8,7 @@
 
 Name:           ipa-healthcheck
 Version:        0.12
-Release:        1%{?dist}
+Release:        3%{?dist}
 Summary:        Health check tool for IdM
 BuildArch:      noarch
 License:        GPLv3
@@ -19,6 +19,8 @@ Source1:        %{longname}.conf
 Patch0001:      0001-Remove-ipaclustercheck.patch
 Patch0002:      0002-Disable-two-failing-tests.patch
 Patch0003:      0003-Fix-logging-issue-related-to-dtype.patch
+Patch0004:      0004-Skip-AD-domains-with-posix-ranges-in-the-catalog-che.patch
+Patch0005:      0005-Don-t-error-in-DogtagCertsConnectivityCheck-with-ext.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       ipa-server
@@ -122,6 +124,12 @@ install -p -m644 %{_builddir}/%{project}-%{shortname}-%{version}/man/man5/%{long
 
 
 %changelog
+* Mon Jul 24 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-3
+- Error in DogtagCertsConnectivityCheckCA with external CA (#2223942)
+
+* Wed May 03 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-2
+- Skip AD domains with posix ranges in the catalog check (#1775199)
+
 * Thu Dec 01 2022 Rob Crittenden <rcritten@redhat.com> - 0.12-1
 - Update to upstream 0.12 (#2139529)
 - Verify that the number of krb5kdc worker processes is aligned to the
