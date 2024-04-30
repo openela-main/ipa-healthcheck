@@ -1,0 +1,59 @@
+From cafe01a23a36c408c8c60357ad2651688dc63599 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Fri, 12 Jan 2024 10:17:18 -0500
+Subject: [PATCH] test: Handle PKI >= 11.5.0 not storing certs in CS.cfg
+
+Update the test to expect 0 results if the PKI version is
+>= 11.5.0.
+
+Fixes: https://github.com/freeipa/freeipa-healthcheck/issues/317
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ tests/test_dogtag_ca.py | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/tests/test_dogtag_ca.py b/tests/test_dogtag_ca.py
+index 0820aba..1f61dea 100644
+--- a/tests/test_dogtag_ca.py
++++ b/tests/test_dogtag_ca.py
+@@ -2,12 +2,16 @@
+ # Copyright (C) 2019 FreeIPA Contributors see COPYING for license
+ #
+ 
++import pki.util
+ from util import capture_results, CAInstance, KRAInstance
+ from base import BaseTest
+ from ipahealthcheck.core import config, constants
+ from ipahealthcheck.dogtag.plugin import registry
+ from ipahealthcheck.dogtag.ca import DogtagCertsConfigCheck
+ from unittest.mock import Mock, patch
++import pytest
++
++pki_version = pki.util.Version(pki.specification_version())
+ 
+ 
+ class mock_Cert:
+@@ -43,6 +47,9 @@ class TestCACerts(BaseTest):
+         Mock(return_value=KRAInstance()),
+     }
+ 
++    @pytest.mark.skipif(
++        pki_version >= pki.util.Version("11.5.0"),
++        reason='Does not apply to PKI 11.5.0+')
+     @patch('ipahealthcheck.dogtag.ca.get_directive')
+     @patch('ipaserver.install.certs.CertDB')
+     def test_ca_certs_ok(self, mock_certdb, mock_directive):
+@@ -71,6 +78,9 @@ class TestCACerts(BaseTest):
+             assert result.source == 'ipahealthcheck.dogtag.ca'
+             assert result.check == 'DogtagCertsConfigCheck'
+ 
++    @pytest.mark.skipif(
++        pki_version >= pki.util.Version("11.5.0"),
++        reason='Does not apply to PKI 11.5.0+')
+     @patch('ipahealthcheck.dogtag.ca.get_directive')
+     @patch('ipaserver.install.certs.CertDB')
+     def test_cert_missing_from_file(self, mock_certdb, mock_directive):
+-- 
+2.42.0
+

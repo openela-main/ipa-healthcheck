@@ -1,0 +1,46 @@
+From e556edc0b1cb607caa50f760d5059877f35fbcdc Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 11 Jan 2024 14:40:02 -0500
+Subject: [PATCH] Skip DogtagCertsConfigCheck for PKI versions >= 11.5.0
+
+In 11.5.0 the PKI project stopped storing the certificate
+blobs in CS.cfg. If we continue to check it we will report a
+false positive so skip it in that case.
+
+Fixes: https://github.com/freeipa/freeipa-healthcheck/issues/317
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ src/ipahealthcheck/dogtag/ca.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/ipahealthcheck/dogtag/ca.py b/src/ipahealthcheck/dogtag/ca.py
+index 4afa5d7..ddf5ece 100644
+--- a/src/ipahealthcheck/dogtag/ca.py
++++ b/src/ipahealthcheck/dogtag/ca.py
+@@ -16,6 +16,8 @@ from ipaserver.install import krainstance
+ from ipapython.directivesetter import get_directive
+ from cryptography.hazmat.primitives.serialization import Encoding
+ 
++import pki.util
++
+ logger = logging.getLogger()
+ 
+ 
+@@ -30,6 +32,13 @@ class DogtagCertsConfigCheck(DogtagPlugin):
+             logger.debug("No CA configured, skipping dogtag config check")
+             return
+ 
++        pki_version = pki.util.Version(pki.specification_version())
++        if pki_version >= pki.util.Version("11.5.0"):
++            logger.debug(
++                "PKI 11.5.0 no longer stores certificats in CS.cfg"
++            )
++            return
++
+         kra = krainstance.KRAInstance(api.env.realm)
+ 
+         blobs = {'auditSigningCert cert-pki-ca': 'ca.audit_signing.cert',
+-- 
+2.42.0
+

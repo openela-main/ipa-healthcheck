@@ -16,8 +16,8 @@
 %bcond_without tests
 
 Name:           %{prefix}-healthcheck
-Version:        0.12
-Release:        4%{?dist}
+Version:        0.16
+Release:        3%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPLv3
@@ -26,10 +26,10 @@ Source0:        https://github.com/freeipa/freeipa-healthcheck/archive/%{version
 Source1:        ipahealthcheck.conf
 
 Patch0001:      0001-Remove-ipaclustercheck.patch
-Patch0002:      0002-Disable-two-failing-tests.patch
-Patch0003:      0003-Skip-AD-domains-with-posix-ranges-in-the-catalog-che.patch
-Patch0004:      0004-Catch-exceptions-during-user-group-name-lookup-in-Fi.patch
-Patch0005:      0005-Don-t-error-in-DogtagCertsConnectivityCheck-with-ext.patch
+Patch0002:      0002-Don-t-fail-if-a-service-name-cannot-be-looked-up-in-.patch
+Patch0003:      0003-Temporarily-disable-the-ipa-ods-exporter-service-sta.patch
+Patch0004:      0004-Skip-DogtagCertsConfigCheck-for-PKI-versions-11.5.0.patch
+Patch0005:      0005-test-Handle-PKI-11.5.0-not-storing-certs-in-CS.cfg.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -159,6 +159,16 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Fri Jan 12 2024 Rob Crittenden <rcritten@redhat.com> - 0.16-3
+- Skip DogtagCertsConfigCheck for PKI versions 11.5.0 (RHEL-21367)
+
+* Tue Nov 14 2023 Rob Crittenden <rcritten@redhat.com> - 0.16-2
+- Don't fail if a service name cannot be looked up in LDAP
+- Disable the ipa-ods-exporter service check
+
+* Thu Nov  9 2023 Rob Crittenden <rcritten@redhat.com> - 0.16-1
+- Update to upstream 0.16 (RHEL-12494)
+
 * Mon Jul 24 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-4
 - Error in DogtagCertsConnectivityCheckCA with external CA (#2224595)
 
