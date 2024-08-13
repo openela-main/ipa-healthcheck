@@ -8,7 +8,7 @@
 
 Name:           ipa-healthcheck
 Version:        0.12
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Health check tool for IdM
 BuildArch:      noarch
 License:        GPLv3
@@ -21,6 +21,9 @@ Patch0002:      0002-Disable-two-failing-tests.patch
 Patch0003:      0003-Fix-logging-issue-related-to-dtype.patch
 Patch0004:      0004-Skip-AD-domains-with-posix-ranges-in-the-catalog-che.patch
 Patch0005:      0005-Don-t-error-in-DogtagCertsConnectivityCheck-with-ext.patch
+Patch0006:      0006-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
+Patch0007:      0007-Fix-some-file-mode-format-issues.patch
+Patch0008:      0008-Allow-WARNING-in-the-files-test.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       ipa-server
@@ -124,6 +127,9 @@ install -p -m644 %{_builddir}/%{project}-%{shortname}-%{version}/man/man5/%{long
 
 
 %changelog
+* Fri Jun 21 2024 Rob Crittenden <rcritten@redhat.com> - 0.12-4
+- Change log file permissions of IPA as per CIS benchmark (RHEL-38929)
+
 * Mon Jul 24 2023 Rob Crittenden <rcritten@redhat.com> - 0.12-3
 - Error in DogtagCertsConnectivityCheckCA with external CA (#2223942)
 
