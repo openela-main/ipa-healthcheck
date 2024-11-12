@@ -17,7 +17,7 @@
 
 Name:           %{prefix}-healthcheck
 Version:        0.16
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPLv3
@@ -30,6 +30,9 @@ Patch0002:      0002-Don-t-fail-if-a-service-name-cannot-be-looked-up-in-.patch
 Patch0003:      0003-Temporarily-disable-the-ipa-ods-exporter-service-sta.patch
 Patch0004:      0004-Skip-DogtagCertsConfigCheck-for-PKI-versions-11.5.0.patch
 Patch0005:      0005-test-Handle-PKI-11.5.0-not-storing-certs-in-CS.cfg.patch
+Patch0006:      0006-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
+Patch0007:      0007-Fix-some-file-mode-format-issues.patch
+Patch0008:      0008-Allow-WARNING-in-the-files-test.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -159,6 +162,9 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Tue Jun 18 2024 Rob Crittenden <rcritten@redhat.com> - 0.16-4
+- Change log file permissions of IPA as per CIS benchmark (RHEL-28575)
+
 * Fri Jan 12 2024 Rob Crittenden <rcritten@redhat.com> - 0.16-3
 - Skip DogtagCertsConfigCheck for PKI versions 11.5.0 (RHEL-21367)
 
