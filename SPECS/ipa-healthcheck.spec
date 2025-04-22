@@ -8,7 +8,7 @@
 
 Name:           ipa-healthcheck
 Version:        0.12
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Health check tool for IdM
 BuildArch:      noarch
 License:        GPLv3
@@ -24,12 +24,14 @@ Patch0005:      0005-Don-t-error-in-DogtagCertsConnectivityCheck-with-ext.patch
 Patch0006:      0006-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
 Patch0007:      0007-Fix-some-file-mode-format-issues.patch
 Patch0008:      0008-Allow-WARNING-in-the-files-test.patch
+Patch0009:      0009-Address-issues-uncovered-by-pylint-2.15.5.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       ipa-server
 Requires:       python3-ipalib
 Requires:       python3-ipaserver
 Requires:       python3-lib389
+Requires:       python3-libsss_nss_idmap
 # cronie-anacron provides anacron
 Requires:       anacron
 Requires:       logrotate
@@ -127,6 +129,10 @@ install -p -m644 %{_builddir}/%{project}-%{shortname}-%{version}/man/man5/%{long
 
 
 %changelog
+* Thu Feb 27 2025 Rob Crittenden <rcritten@redhat.com> - 0.12-5
+- Pull in lint fixes. Prevents exception when testing for AD trust (RHEL-79081)
+- Add direct requires on python3-libsss_nss_idmap.
+
 * Fri Jun 21 2024 Rob Crittenden <rcritten@redhat.com> - 0.12-4
 - Change log file permissions of IPA as per CIS benchmark (RHEL-38929)
 
