@@ -8,7 +8,7 @@
 
 Name:           ipa-healthcheck
 Version:        0.12
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Health check tool for IdM
 BuildArch:      noarch
 License:        GPLv3
@@ -25,6 +25,7 @@ Patch0006:      0006-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
 Patch0007:      0007-Fix-some-file-mode-format-issues.patch
 Patch0008:      0008-Allow-WARNING-in-the-files-test.patch
 Patch0009:      0009-Address-issues-uncovered-by-pylint-2.15.5.patch
+Patch0010:      0010-Don-t-rely-on-order-in-trust-agent-controller-role-c.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       ipa-server
@@ -129,6 +130,9 @@ install -p -m644 %{_builddir}/%{project}-%{shortname}-%{version}/man/man5/%{long
 
 
 %changelog
+* Mon Jun 23 2025 Rob Crittenden <rcritten@redhat.com> - 0.12-6
+- Don't rely on order in trust roles (RHEL-99487)
+
 * Thu Feb 27 2025 Rob Crittenden <rcritten@redhat.com> - 0.12-5
 - Pull in lint fixes. Prevents exception when testing for AD trust (RHEL-79081)
 - Add direct requires on python3-libsss_nss_idmap.
