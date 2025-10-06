@@ -1,0 +1,190 @@
+From 2206b9915606c555163dec775a99a355dc02bee0 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Tue, 28 May 2024 11:15:48 -0400
+Subject: [PATCH] Fix some file mode format issues
+
+When specifying multiple possible modes for a file the values must
+be a tuple. There were two occurances where they were listed
+separately.
+
+Add in a pre-check on the formatting to raise an error for badly
+formatted files. This may be annoying for users if one sneaks in
+again but the CI should catch it.
+
+Related: https://github.com/freeipa/freeipa-healthcheck/issues/325
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ src/ipahealthcheck/core/files.py | 12 +++++-
+ src/ipahealthcheck/ipa/files.py  |  6 +--
+ tests/test_core_files.py         | 72 +++++++++++++++++++++++++++++++-
+ tests/util.py                    |  1 +
+ 4 files changed, 85 insertions(+), 6 deletions(-)
+
+diff --git a/src/ipahealthcheck/core/files.py b/src/ipahealthcheck/core/files.py
+index 85d42bc..32bc5b2 100644
+--- a/src/ipahealthcheck/core/files.py
++++ b/src/ipahealthcheck/core/files.py
+@@ -31,7 +31,17 @@ class FileCheck:
+ 
+     @duration
+     def check(self):
+-        for (path, owner, group, mode) in self.files:
++        # first validate that the list of files to check is in the correct
++        # format
++        process_files = []
++        for file in self.files:
++            if len(file) == 4:
++                process_files.append(file)
++            else:
++                yield Result(self, constants.ERROR, key=file,
++                             msg='Code format is incorrect for file')
++
++        for (path, owner, group, mode) in process_files:
+             if not isinstance(owner, tuple):
+                 owner = tuple((owner,))
+             if not isinstance(group, tuple):
+diff --git a/src/ipahealthcheck/ipa/files.py b/src/ipahealthcheck/ipa/files.py
+index d914014..c80fd5b 100644
+--- a/src/ipahealthcheck/ipa/files.py
++++ b/src/ipahealthcheck/ipa/files.py
+@@ -121,7 +121,7 @@ class IPAFileCheck(IPAPlugin, FileCheck):
+                 self.files.append((filename, 'root', 'root', '0600'))
+ 
+         self.files.append((paths.IPA_CUSTODIA_AUDIT_LOG,
+-                          'root', 'root', '0644', '0640'))
++                          'root', 'root', ('0644', '0640')))
+ 
+         self.files.append((paths.KADMIND_LOG, 'root', 'root',
+                           ('0600', '0640')))
+@@ -134,12 +134,12 @@ class IPAFileCheck(IPAPlugin, FileCheck):
+                            constants.DS_USER, constants.DS_GROUP, '0600'))
+ 
+         self.files.append((paths.VAR_LOG_HTTPD_ERROR, 'root', 'root',
+-                           '0644', '0640'))
++                           ('0644', '0640')))
+ 
+         for globpath in glob.glob("%s/debug*.log" % paths.TOMCAT_CA_DIR):
+             self.files.append(
+                 (globpath, constants.PKI_USER, constants.PKI_GROUP,
+-                 "0644", "0640")
++                 ("0644", "0640"))
+             )
+ 
+         for globpath in glob.glob(
+diff --git a/tests/test_core_files.py b/tests/test_core_files.py
+index 924d7fa..e7010a9 100644
+--- a/tests/test_core_files.py
++++ b/tests/test_core_files.py
+@@ -2,14 +2,22 @@
+ # Copyright (C) 2019 FreeIPA Contributors see COPYING for license
+ #
+ 
++from ldap import OPT_X_SASL_SSF_MIN
+ import pwd
+ import posix
++from util import m_api
++from util import capture_results
++
++from ipahealthcheck.core import config
+ from ipahealthcheck.core.files import FileCheck
+ from ipahealthcheck.core import constants
+ from ipahealthcheck.core.plugin import Results
++from ipahealthcheck.ipa.files import IPAFileCheck
++from ipahealthcheck.system.plugin import registry
+ from unittest.mock import patch
++from ipapython.dn import DN
++from ipapython.ipaldap import LDAPClient, LDAPEntry
+ 
+-from util import capture_results
+ 
+ nobody = pwd.getpwnam('nobody')
+ 
+@@ -20,6 +28,37 @@ files = (('foo', 'root', 'root', '0660'),
+          ('fiz', ('root', 'bin'), ('root', 'bin'), '0664'),
+          ('zap', ('root', 'bin'), ('root', 'bin'), ('0664', '0640'),))
+ 
++bad_modes = (('biz', ('root', 'bin'), ('root', 'bin'), '0664', '0640'),)
++
++
++class mock_ldap:
++    SCOPE_BASE = 1
++    SCOPE_ONELEVEL = 2
++    SCOPE_SUBTREE = 4
++
++    def __init__(self, ldapentry):
++        """Initialize the results that we will return from get_entries"""
++        self.results = ldapentry
++
++    def get_entry(self, dn, attrs_list=None, time_limit=None,
++                  size_limit=None, get_effective_rights=False):
++        return []  # the call doesn't check the value
++
++
++class mock_ldap_conn:
++    def set_option(self, option, invalue):
++        pass
++
++    def get_option(self, option):
++        if option == OPT_X_SASL_SSF_MIN:
++            return 256
++
++        return None
++
++    def search_s(self, base, scope, filterstr=None,
++                 attrlist=None, attrsonly=0):
++        return tuple()
++
+ 
+ def make_stat(mode=33200, uid=0, gid=0):
+     """Return a mocked-up stat.
+@@ -234,4 +273,33 @@ def test_files_group_not_found(mock_grgid, mock_grnam, mock_stat):
+     my_results = get_results(results, 'group')
+     for result in my_results.results:
+         assert result.result == constants.WARNING
+-        assert result.kw.get('got') == 'Unknown gid 0'
++
++
++def test_bad_modes():
++    f = FileCheck()
++    f.files = bad_modes
++
++    results = capture_results(f)
++
++    for result in results.results:
++        assert result.result == constants.ERROR
++        assert result.kw.get('msg') == 'Code format is incorrect for file'
++
++
++@patch('ipaserver.install.krbinstance.is_pkinit_enabled')
++def test_ipa_files_format(mock_pkinit):
++    mock_pkinit.return_value = True
++
++    fake_conn = LDAPClient('ldap://localhost', no_schema=True)
++    ldapentry = LDAPEntry(fake_conn, DN(m_api.env.container_dns,
++                          m_api.env.basedn))
++    framework = object()
++    registry.initialize(framework, config.Config)
++    f = IPAFileCheck(registry)
++
++    f.conn = mock_ldap(ldapentry)
++
++    results = capture_results(f)
++
++    for result in results.results:
++        assert result.result == constants.SUCCESS
+diff --git a/tests/util.py b/tests/util.py
+index 12c1688..fb8750a 100644
+--- a/tests/util.py
++++ b/tests/util.py
+@@ -141,6 +141,7 @@ m_api.env.container_host = DN(('cn', 'computers'), ('cn', 'accounts'))
+ m_api.env.container_sysaccounts = DN(('cn', 'sysaccounts'), ('cn', 'etc'))
+ m_api.env.container_service = DN(('cn', 'services'), ('cn', 'accounts'))
+ m_api.env.container_masters = DN(('cn', 'masters'))
++m_api.env.container_dns = DN(('cn', 'dns'))
+ m_api.Backend = Mock()
+ m_api.Command = Mock()
+ m_api.Command.ping.return_value = {
+-- 
+2.45.0
+

@@ -1,0 +1,28 @@
+From b6346fedcc158a3ed3a70691350bf7ebee4a8460 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 20 Jun 2024 14:27:16 -0400
+Subject: [PATCH] Allow WARNING in the files test
+
+We are only validating the format and don't need to actually
+enforce the results in CI. The validation raises ERROR.
+
+Related: https://github.com/freeipa/freeipa-healthcheck/issues/325
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ tests/test_core_files.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tests/test_core_files.py b/tests/test_core_files.py
+index e7010a9..d308410 100644
+--- a/tests/test_core_files.py
++++ b/tests/test_core_files.py
+@@ -302,4 +302,4 @@ def test_ipa_files_format(mock_pkinit):
+     results = capture_results(f)
+ 
+     for result in results.results:
+-        assert result.result == constants.SUCCESS
++        assert result.result in (constants.SUCCESS, constants.WARNING)
+-- 
+2.45.0
+

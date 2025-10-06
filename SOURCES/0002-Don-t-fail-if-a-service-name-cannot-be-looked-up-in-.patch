@@ -1,0 +1,44 @@
+From 35ff77300758c12110132d6d638802d5b223bd6d Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Mon, 13 Nov 2023 14:09:16 -0500
+Subject: [PATCH] Don't fail if a service name cannot be looked up in LDAP
+
+A new method was introduced to handle more IPA services. This
+requires looking some of them up in LDAP. dirsrv not running
+was not being caught so raised an error instead.
+
+Fixes: https://github.com/freeipa/freeipa-healthcheck/issues/312
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ src/ipahealthcheck/meta/services.py | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/ipahealthcheck/meta/services.py b/src/ipahealthcheck/meta/services.py
+index 10fa83f..9838128 100644
+--- a/src/ipahealthcheck/meta/services.py
++++ b/src/ipahealthcheck/meta/services.py
+@@ -25,10 +25,18 @@ class IPAServiceCheck(ServiceCheck):
+     def get_service_name(self, role):
+         """Roles define broad services. Translate a role name into
+            an individual service name.
++
++           Returns a string on success, None if the service is not
++           configured or cannot be determined.
+         """
+         conn = api.Backend.ldap2
+-        if not api.Backend.ldap2.isconnected():
+-            api.Backend.ldap2.connect()
++        try:
++            if not api.Backend.ldap2.isconnected():
++                api.Backend.ldap2.connect()
++        except errors.NetworkError:
++            logger.debug("Service '%s' is not running", self.service_name)
++            return None
++
+         dn = DN(
+             ("cn", role), ("cn", api.env.host),
+             ("cn", "masters"), ("cn", "ipa"), ("cn", "etc"),
+-- 
+2.41.0
+

@@ -1,0 +1,44 @@
+From d1cb1997737c938bbc61d547aae277e308e78fce Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Tue, 14 Nov 2023 20:32:54 -0500
+Subject: [PATCH] Temporarily disable the ipa-ods-exporter service status check
+
+There is a bug in this service such that it will almost always
+report as down. Rather than spamming users with this error give
+time for it to be fixed in IPA upstream.
+
+See https://pagure.io/freeipa/issue/9463
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ src/ipahealthcheck/meta/services.py | 14 --------------
+ 1 file changed, 14 deletions(-)
+
+diff --git a/src/ipahealthcheck/meta/services.py b/src/ipahealthcheck/meta/services.py
+index 9838128..b8973cb 100644
+--- a/src/ipahealthcheck/meta/services.py
++++ b/src/ipahealthcheck/meta/services.py
+@@ -202,20 +202,6 @@ class ods_enforcerd(IPAServiceCheck):
+         return super().check()
+ 
+ 
+-@registry
+-class ipa_ods_exporter(IPAServiceCheck):
+-    requires = ('dirsrv',)
+-
+-    def check(self, instance=''):
+-        self.service_name = self.get_service_name('DNSKeyExporter')
+-
+-        if self.service_name is None:
+-            # No service name means it is not configured
+-            return ()
+-
+-        return super().check()
+-
+-
+ @registry
+ class ipa_dnskeysyncd(IPAServiceCheck):
+     requires = ('dirsrv',)
+-- 
+2.40.1
+
