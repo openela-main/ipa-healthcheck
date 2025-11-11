@@ -1,0 +1,72 @@
+From 1bdd735669dc4cfeb3776721c26b1716e2032c95 Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Mon, 20 Jan 2025 11:19:16 -0500
+Subject: [PATCH] Compatibility fix for PyCA cryptography 42.0.0
+
+Cryptography 42.0.0 introduced two new abstract properties
+`not_valid_before_utc` and `not_valid_after_utc`, which are non-naive UTC
+variants of the `not_valid_before` and `not_valid_after` properties.
+
+The old properties are deprecated. The change also modifies tests to
+handle the new `_utc` variants.
+
+Fixes: https://github.com/freeipa/freeipa-healthcheck/issues/345
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ src/ipahealthcheck/ipa/certs.py       | 4 ++--
+ tests/test_ipa_certfile_expiration.py | 2 +-
+ tests/test_ipa_expiration.py          | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/ipahealthcheck/ipa/certs.py b/src/ipahealthcheck/ipa/certs.py
+index 0b7a995..b8332e0 100644
+--- a/src/ipahealthcheck/ipa/certs.py
++++ b/src/ipahealthcheck/ipa/certs.py
+@@ -428,7 +428,7 @@ class IPACertfileExpirationCheck(IPAPlugin):
+ 
+             now = datetime.now(tz=timezone.utc)
+             # Older versions of IPA provide naive timestamps
+-            notafter = cert.not_valid_after.replace(tzinfo=timezone.utc)
++            notafter = cert.not_valid_after_utc
+ 
+             if now > notafter:
+                 yield Result(self, constants.ERROR,
+@@ -1447,7 +1447,7 @@ class IPACAChainExpirationCheck(IPAPlugin):
+         for cert in ca_certs:
+             subject = DN(cert.subject)
+             subject = str(subject).replace('\\;', '\\3b')
+-            dt = cert.not_valid_after.replace(tzinfo=timezone.utc)
++            dt = cert.not_valid_after_utc
+             if dt < now:
+                 logger.debug("%s is expired", subject)
+                 yield Result(self, constants.CRITICAL,
+diff --git a/tests/test_ipa_certfile_expiration.py b/tests/test_ipa_certfile_expiration.py
+index 5f34051..9c7d829 100644
+--- a/tests/test_ipa_certfile_expiration.py
++++ b/tests/test_ipa_certfile_expiration.py
+@@ -23,7 +23,7 @@ class IPACertificate:
+         self.subject = 'CN=RA AGENT'
+         self.issuer = 'CN=ISSUER'
+         self.serial_number = serial_number
+-        self.not_valid_after = not_valid_after
++        self.not_valid_after_utc = not_valid_after
+ 
+ 
+ class TestIPACertificateFile(BaseTest):
+diff --git a/tests/test_ipa_expiration.py b/tests/test_ipa_expiration.py
+index fb7105b..e19aa7b 100644
+--- a/tests/test_ipa_expiration.py
++++ b/tests/test_ipa_expiration.py
+@@ -100,7 +100,7 @@ class FakeIPACertificate:
+         return self.subj
+ 
+     @property
+-    def not_valid_after(self):
++    def not_valid_after_utc(self):
+         return self.not_after
+ 
+ 
+-- 
+2.49.0
+

@@ -1,0 +1,45 @@
+From f42dc7bbbd336ee888942a9aff8a55b000e4108e Mon Sep 17 00:00:00 2001
+From: David Hanina <dhanina@redhat.com>
+Date: Mon, 24 Feb 2025 10:17:02 +0100
+Subject: [PATCH 15/16] Remove unnecessary check
+
+The missing PROC_FIPS_ENABLED should be considered a bug
+in the base package, therefore no need to check here.
+
+Signed-off-by: David Hanina <dhanina@redhat.com>
+---
+ src/ipahealthcheck/meta/core.py | 3 ---
+ tests/test_meta.py              | 3 ---
+ 2 files changed, 6 deletions(-)
+
+diff --git a/src/ipahealthcheck/meta/core.py b/src/ipahealthcheck/meta/core.py
+index 56e7c20..b1f6c33 100644
+--- a/src/ipahealthcheck/meta/core.py
++++ b/src/ipahealthcheck/meta/core.py
+@@ -14,9 +14,6 @@ from ipapython import ipautil
+ from ipapython.version import VERSION, API_VERSION
+ from ipaplatform.paths import paths
+ 
+-if 'PROC_FIPS_ENABLED' not in dir(paths):
+-    paths.PROC_FIPS_ENABLED = '/proc/sys/crypto/fips_enabled'
+-
+ logger = logging.getLogger()
+ 
+ 
+diff --git a/tests/test_meta.py b/tests/test_meta.py
+index 9a86373..027507f 100644
+--- a/tests/test_meta.py
++++ b/tests/test_meta.py
+@@ -12,9 +12,6 @@ from ipahealthcheck.meta.plugin import registry
+ from ipahealthcheck.meta.core import MetaCheck
+ from ipaplatform.paths import paths
+ 
+-if 'PROC_FIPS_ENABLED' not in dir(paths):
+-    paths.PROC_FIPS_ENABLED = '/proc/sys/crypto/fips_enabled'
+-
+ 
+ def gen_result(returncode, output='', error=''):
+     """
+-- 
+2.48.1
+

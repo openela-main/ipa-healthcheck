@@ -1,0 +1,258 @@
+From dec5120a55dc3cca56c9cf3cb2b61b5016c740b7 Mon Sep 17 00:00:00 2001
+From: David Hanina <dhanina@redhat.com>
+Date: Mon, 17 Feb 2025 15:33:44 +0100
+Subject: [PATCH 11/16] Replace fips-mode-setup
+
+RHEL10 doesn't support fips-mode-setup, therefore this call
+has been replaced with simple reading of a proc file.
+The tests have been edited accordingly, inconsistent has been removed
+and instead replaced by a test supplying an arbitrary value, that
+should never occur.
+
+Fixes: #350
+Signed-off-by: David Hanina <dhanina@redhat.com>
+---
+ src/ipahealthcheck/meta/core.py | 34 ++++++++++----------
+ tests/test_meta.py              | 56 ++++++++++++++++++---------------
+ 2 files changed, 48 insertions(+), 42 deletions(-)
+
+diff --git a/src/ipahealthcheck/meta/core.py b/src/ipahealthcheck/meta/core.py
+index 7e6c6ba..6743ab1 100644
+--- a/src/ipahealthcheck/meta/core.py
++++ b/src/ipahealthcheck/meta/core.py
+@@ -5,6 +5,7 @@
+ import logging
+ import os
+ import socket
++from pathlib import Path
+ from ipahealthcheck.core import constants
+ from ipahealthcheck.core.exceptions import TimeoutError
+ from ipahealthcheck.core.plugin import Result, duration
+@@ -13,8 +14,8 @@ from ipapython import ipautil
+ from ipapython.version import VERSION, API_VERSION
+ from ipaplatform.paths import paths
+ 
+-if 'FIPS_MODE_SETUP' not in dir(paths):
+-    paths.FIPS_MODE_SETUP = '/usr/bin/fips-mode-setup'
++if 'PROC_FIPS_ENABLED' not in dir(paths):
++    paths.PROC_FIPS_ENABLED = '/proc/sys/crypto/fips_enabled'
+ 
+ logger = logging.getLogger()
+ 
+@@ -25,31 +26,30 @@ class MetaCheck(Plugin):
+     def check(self):
+ 
+         rval = constants.SUCCESS
+-        if not os.path.exists(paths.FIPS_MODE_SETUP):
+-            fips = "missing {}".format(paths.FIPS_MODE_SETUP)
+-            logger.debug('%s is not installed, skipping',
+-                         paths.FIPS_MODE_SETUP)
++        if not os.path.exists(paths.PROC_FIPS_ENABLED):
++            fips = "missing {}".format(paths.PROC_FIPS_ENABLED)
++            logger.debug("Can't find %s, skipping" %
++                         paths.PROC_FIPS_ENABLED)
+         else:
+             try:
+-                result = ipautil.run([paths.FIPS_MODE_SETUP,
+-                                      '--is-enabled'],
+-                                     capture_output=True,
+-                                     raiseonerr=False,)
++                proc_fips_enable_path = Path(paths.PROC_FIPS_ENABLED)
++                result_text = proc_fips_enable_path.read_text()
++                result = int(result_text)
+             except TimeoutError:
+-                logger.debug('fips-mode-setup timed out')
++                logger.debug('Reading %s timed out' % paths.PROC_FIPS_ENABLED)
+                 fips = "check timed out"
+                 rval = constants.ERROR
+             except Exception as e:
+-                logger.debug('fips-mode-setup failed: %s', e)
++                logger.debug('Reading %s failed: %s' %
++                             (paths.PROC_FIPS_ENABLED, e))
+                 fips = "failed to check"
+                 rval = constants.ERROR
+             else:
+-                logger.debug(result.raw_output.decode('utf-8'))
+-                if result.returncode == 0:
++                logger.debug("%s returns %i" %
++                             (paths.PROC_FIPS_ENABLED, result))
++                if result == 1:
+                     fips = "enabled"
+-                elif result.returncode == 1:
+-                    fips = "inconsistent"
+-                elif result.returncode == 2:
++                elif result == 0:
+                     fips = "disabled"
+                 else:
+                     fips = "unknown"
+diff --git a/tests/test_meta.py b/tests/test_meta.py
+index dadb7c7..5cd9bb4 100644
+--- a/tests/test_meta.py
++++ b/tests/test_meta.py
+@@ -10,11 +10,10 @@ from util import capture_results
+ from ipahealthcheck.core import config, constants
+ from ipahealthcheck.meta.plugin import registry
+ from ipahealthcheck.meta.core import MetaCheck
+-from ipapython import ipautil
+ from ipaplatform.paths import paths
+ 
+-if 'FIPS_MODE_SETUP' not in dir(paths):
+-    paths.FIPS_MODE_SETUP = '/usr/bin/fips-mode-setup'
++if 'PROC_FIPS_ENABLED' not in dir(paths):
++    paths.PROC_FIPS_ENABLED = '/proc/sys/crypto/fips_enabled'
+ 
+ 
+ def gen_result(returncode, output='', error=''):
+@@ -36,7 +35,7 @@ def gen_result(returncode, output='', error=''):
+ 
+ class TestMetaFIPS(BaseTest):
+     @patch('os.path.exists')
+-    def test_fips_no_fips_mode_setup(self, mock_exists):
++    def test_fips_no_fips_enabled(self, mock_exists):
+         mock_exists.return_value = False
+ 
+         framework = object()
+@@ -51,15 +50,16 @@ class TestMetaFIPS(BaseTest):
+         assert result.result == constants.SUCCESS
+         assert result.source == 'ipahealthcheck.meta.core'
+         assert result.check == 'MetaCheck'
+-        assert result.kw.get('fips') == 'missing %s' % paths.FIPS_MODE_SETUP
++        assert result.kw.get('fips') == 'missing %s' % paths.PROC_FIPS_ENABLED
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_fips_disabled(self, mock_run, mock_exists):
++    def test_fips_disabled(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
++        mock_result.return_value = '0'
+ 
+         mock_run.side_effect = [
+-            gen_result(2),
+             gen_result(0, output='ACME is disabled'),
+         ]
+ 
+@@ -78,12 +78,13 @@ class TestMetaFIPS(BaseTest):
+         assert result.kw.get('fips') == 'disabled'
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_fips_enabled(self, mock_run, mock_exists):
++    def test_fips_enabled(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
++        mock_result.return_value = '1'
+ 
+         mock_run.side_effect = [
+-            gen_result(0),
+             gen_result(0, output='ACME is disabled'),
+         ]
+ 
+@@ -102,12 +103,13 @@ class TestMetaFIPS(BaseTest):
+         assert result.kw.get('fips') == 'enabled'
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_fips_inconsistent(self, mock_run, mock_exists):
++    def test_fips_unknown(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
++        mock_result.return_value = '2'
+ 
+         mock_run.side_effect = [
+-            gen_result(1),
+             gen_result(0, output='ACME is disabled'),
+         ]
+ 
+@@ -123,15 +125,16 @@ class TestMetaFIPS(BaseTest):
+         assert result.result == constants.SUCCESS
+         assert result.source == 'ipahealthcheck.meta.core'
+         assert result.check == 'MetaCheck'
+-        assert result.kw.get('fips') == 'inconsistent'
++        assert result.kw.get('fips') == 'unknown'
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_fips_unknown(self, mock_run, mock_exists):
++    def test_fips_non_numeric(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
++        mock_result.return_value = 'test'
+ 
+         mock_run.side_effect = [
+-            gen_result(103),
+             gen_result(0, output='ACME is disabled'),
+         ]
+ 
+@@ -144,20 +147,22 @@ class TestMetaFIPS(BaseTest):
+         assert len(self.results) == 1
+ 
+         result = self.results.results[0]
+-        assert result.result == constants.SUCCESS
++        assert result.result == constants.ERROR
+         assert result.source == 'ipahealthcheck.meta.core'
+         assert result.check == 'MetaCheck'
+-        assert result.kw.get('fips') == 'unknown'
++        assert result.kw.get('fips') == 'failed to check'
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_fips_failed(self, mock_run, mock_exists):
++    def test_fips_failed(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
+ 
++        mock_result.side_effect = [
++            gen_result(constants.ERROR, output="failed to check"),
++        ]
++
+         mock_run.side_effect = [
+-            ipautil.CalledProcessError(
+-                1, 'fips-mode-setup', output='execution failed'
+-            ),
+             gen_result(0, output='ACME is disabled'),
+         ]
+ 
+@@ -197,12 +202,13 @@ class TestMetaACME(BaseTest):
+             'missing %s' % '/usr/sbin/ipa-acme-manage'
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_acme_disabled(self, mock_run, mock_exists):
++    def test_acme_disabled(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
++        mock_result.return_value = '1'
+ 
+         mock_run.side_effect = [
+-            gen_result(0),
+             gen_result(0, output='ACME is disabled'),
+         ]
+ 
+@@ -221,12 +227,13 @@ class TestMetaACME(BaseTest):
+         assert result.kw.get('acme') == 'disabled'
+ 
+     @patch('os.path.exists')
++    @patch('pathlib.Path.read_text')
+     @patch('ipapython.ipautil.run')
+-    def test_acme_enabled(self, mock_run, mock_exists):
++    def test_acme_enabled(self, mock_run, mock_result, mock_exists):
+         mock_exists.return_value = True
++        mock_result.return_value = '1'
+ 
+         mock_run.side_effect = [
+-            gen_result(0),
+             gen_result(0, output='ACME is enabled'),
+         ]
+ 
+@@ -250,7 +257,6 @@ class TestMetaACME(BaseTest):
+         mock_exists.return_value = True
+ 
+         mock_run.side_effect = [
+-            gen_result(0),
+             gen_result(
+                 0,
+                 error="cannot connect to 'https://somewhere/acme/login"
+-- 
+2.48.1
+

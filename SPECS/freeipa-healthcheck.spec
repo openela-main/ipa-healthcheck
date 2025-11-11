@@ -17,7 +17,7 @@
 
 Name:           %{prefix}-healthcheck
 Version:        0.16
-Release:        7%{?dist}
+Release:        11%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPL-3.0-or-later
@@ -34,6 +34,17 @@ Patch0006:      0006-Handle-CS.cfg-file-missing-in-DogtagCertsConfigCheck.patch
 Patch0007:      0007-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
 Patch0008:      0008-Fix-some-file-mode-format-issues.patch
 Patch0009:      0009-Allow-WARNING-in-the-files-test.patch
+Patch0010:      0010-Check-user-provided-certificates-for-expiration.patch
+Patch0011:      0011-Replace-fips-mode-setup.patch
+Patch0012:      0012-Mock-read_text-for-acme-unknown.patch
+Patch0013:      0013-Warn-missing-fips-file.patch
+Patch0014:      0014-Remove-unnecessary-timeout.patch
+Patch0015:      0015-Remove-unnecessary-check.patch
+Patch0016:      0016-Warn-if-krbLastSuccessfulAuth-replication-is-enabled.patch
+Patch0017:      0017-Warn-about-unexpected-umask.patch
+Patch0018:      0018-IPAOpenSSLChainValidation-ignore-default-trust-store.patch
+Patch0019:      0019-Compatibility-fix-for-PyCA-cryptography-42.0.0.patch
+Patch0020:      0020-Don-t-rely-on-order-in-trust-agent-controller-role-c.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -163,6 +174,20 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Wed Jun 25 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-11
+- IPAOpenSSLChainValidation: ignore default trust store (RHEL-99999)
+- Don't rely on order in trust agent/controller role check (RHEL-99532)
+
+* Tue May 27 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-10
+- Warn in ipa-healthcheck if umask is not 022 (RHEL-85561)
+
+* Mon Mar 10 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-9
+- Don't require fips-mode-setup for FIPS status (RHEL-67635)
+- Check for krbLastSuccessfulAuth being enabled (RHEL-84771)
+
+* Tue Feb 25 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-8
+- Check expiration dates of user-provided certificates (RHEL-78399)
+
 * Tue Oct 29 2024 Troy Dawson <tdawson@redhat.com> - 0.16-7
 - Bump release for October 2024 mass rebuild:
   Resolves: RHEL-64018
@@ -320,7 +345,7 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 * Mon Dec 2 2019 François Cami <fcami@redhat.com> - 0.4-1
 - Update to upstream 0.4
-- Change Source0 to something "spectool -g" can use. 
+- Change Source0 to something "spectool -g" can use.
 - Correct URL (#1773512)
 - Errors not translated to strings (#1752849)
 - JSON output not indented by default (#1729043)
