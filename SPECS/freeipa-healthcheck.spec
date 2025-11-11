@@ -17,7 +17,7 @@
 
 Name:           %{prefix}-healthcheck
 Version:        0.16
-Release:        4%{?dist}
+Release:        9%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPLv3
@@ -33,6 +33,10 @@ Patch0005:      0005-test-Handle-PKI-11.5.0-not-storing-certs-in-CS.cfg.patch
 Patch0006:      0006-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
 Patch0007:      0007-Fix-some-file-mode-format-issues.patch
 Patch0008:      0008-Allow-WARNING-in-the-files-test.patch
+Patch0009:      0009-Check-user-provided-certificates-for-expiration.patch 
+Patch0010:      0010-Warn-if-krbLastSuccessfulAuth-replication-is-enabled.patch
+Patch0011:      0011-Warn-about-unexpected-umask.patch 
+Patch0012:      0012-Don-t-rely-on-order-in-trust-agent-controller-role-c.patch 
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -162,6 +166,21 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Mon Jun 30 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-9
+- Don't rely on order in trust roles (RHEL-99531)
+
+* Thu Jun 26 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-8
+- Incorrect patch merged
+
+* Tue May 27 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-7
+- Warn in ipa-healthcheck if umask is not 022 (RHEL-67901)
+
+* Mon Mar 24 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-6
+- Check for krbLastSuccessfulAuth being enabled (RHEL-4957)
+
+* Tue Feb 25 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-5
+- Check expiration dates of user-provided certificates (RHEL-80670)
+
 * Tue Jun 18 2024 Rob Crittenden <rcritten@redhat.com> - 0.16-4
 - Change log file permissions of IPA as per CIS benchmark (RHEL-28575)
 

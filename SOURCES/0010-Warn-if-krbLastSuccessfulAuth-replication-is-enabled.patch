@@ -1,0 +1,146 @@
+From 4127298975d4625006a8cb5183583df34c67107d Mon Sep 17 00:00:00 2001
+From: Rob Crittenden <rcritten@redhat.com>
+Date: Thu, 27 Feb 2025 12:17:41 -0500
+Subject: [PATCH] Warn if krbLastSuccessfulAuth replication is enabled
+
+This is controlled in IPA via the ipaconfigstring value including
+KDC:Disable Last Success.
+
+Fixes: https://github.com/freeipa/freeipa-healthcheck/issues/315
+
+Signed-off-by: Rob Crittenden <rcritten@redhat.com>
+---
+ setup.py                         |  1 +
+ src/ipahealthcheck/ipa/config.py | 46 +++++++++++++++++++++++++++
+ tests/test_ipa_config.py         | 54 ++++++++++++++++++++++++++++++++
+ 3 files changed, 101 insertions(+)
+ create mode 100644 src/ipahealthcheck/ipa/config.py
+ create mode 100644 tests/test_ipa_config.py
+
+diff --git a/setup.py b/setup.py
+index fe47b55..7126082 100644
+--- a/setup.py
++++ b/setup.py
+@@ -39,6 +39,7 @@ setup(
+         # plugin modules for ipahealthcheck.ipa registry
+         'ipahealthcheck.ipa': [
+             'ipacerts = ipahealthcheck.ipa.certs',
++            'ipaconfig = ipahealthcheck.ipa.config',
+             'ipadna = ipahealthcheck.ipa.dna',
+             'ipadns = ipahealthcheck.ipa.idns',
+             'ipafiles = ipahealthcheck.ipa.files',
+diff --git a/src/ipahealthcheck/ipa/config.py b/src/ipahealthcheck/ipa/config.py
+new file mode 100644
+index 0000000..c14ee8f
+--- /dev/null
++++ b/src/ipahealthcheck/ipa/config.py
+@@ -0,0 +1,46 @@
++
++# Copyright (C) 2025 FreeIPA Contributors see COPYING for license
++#
++
++from ipahealthcheck.ipa.plugin import IPAPlugin, registry
++from ipahealthcheck.core.plugin import Result, duration
++from ipahealthcheck.core import constants
++
++from ipalib import api
++
++
++@registry
++class IPAkrbLastSuccessfulAuth(IPAPlugin):
++    """Warn if krbLastSuccessfulAuth is enabled. It can cause
++       performance issues.
++    """
++    requires = ('dirsrv',)
++
++    @duration
++    def check(self):
++        try:
++            result = api.Command.config_show()
++        except Exception as e:
++            yield Result(self, constants.ERROR,
++                         key='krbLastSuccessfulAuth',
++                         msg='Request for configuration failed, %s' % e)
++            return
++
++        configstring = result["result"].get(
++            "ipaconfigstring", []
++        )
++
++        if 'KDC:Disable Last Success' not in configstring:
++            yield Result(
++                self,
++                constants.WARNING,
++                key='krbLastSuccessfulAuth',
++                configstring=configstring,
++                msg="Last Successful Auth is enabled. It may cause "
++                    "performance problems.")
++        else:
++            yield Result(
++                self,
++                constants.SUCCESS,
++                key='krbLastSuccessfulAuth'
++            )
+diff --git a/tests/test_ipa_config.py b/tests/test_ipa_config.py
+new file mode 100644
+index 0000000..5cc0c1e
+--- /dev/null
++++ b/tests/test_ipa_config.py
+@@ -0,0 +1,54 @@
++#
++# Copyright (C) 2025 FreeIPA Contributors see COPYING for license
++#
++
++from util import capture_results, m_api
++from base import BaseTest
++from ipahealthcheck.core import config, constants
++from ipahealthcheck.ipa.plugin import registry
++from ipahealthcheck.ipa.config import IPAkrbLastSuccessfulAuth
++
++
++class TestkrbLastSuccessfulAuth(BaseTest):
++
++    def test_last_success_disabled(self):
++        """Test that no warning is issued in the default config"""
++
++        m_api.Command.config_show.side_effect = [{
++            'result': {
++                'ipaconfigstring': ['KDC:Disable Last Success',]
++            }
++        }]
++
++        framework = object()
++        registry.initialize(framework, config.Config())
++        f = IPAkrbLastSuccessfulAuth(registry)
++        self.results = capture_results(f)
++
++        assert len(self.results) == 1
++        result = self.results.results[0]
++        assert result.result == constants.SUCCESS
++        assert result.source == 'ipahealthcheck.ipa.config'
++        assert result.check == 'IPAkrbLastSuccessfulAuth'
++
++    def test_last_success_enabled(self):
++        """Test that a warning is issued when krbLastSuccessfulAuth is
++           replicated.
++        """
++
++        m_api.Command.config_show.side_effect = [{
++            'result': {
++                'ipaconfigstring': ['',]
++            }
++        }]
++
++        framework = object()
++        registry.initialize(framework, config.Config())
++        f = IPAkrbLastSuccessfulAuth(registry)
++        self.results = capture_results(f)
++
++        assert len(self.results) == 1
++        result = self.results.results[0]
++        assert result.result == constants.WARNING
++        assert result.source == 'ipahealthcheck.ipa.config'
++        assert result.check == 'IPAkrbLastSuccessfulAuth'
+-- 
+2.48.1
+
