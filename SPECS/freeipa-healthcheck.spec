@@ -16,8 +16,8 @@
 %bcond_without tests
 
 Name:           %{prefix}-healthcheck
-Version:        0.16
-Release:        9%{?dist}
+Version:        0.19
+Release:        1%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPLv3
@@ -26,17 +26,6 @@ Source0:        https://github.com/freeipa/freeipa-healthcheck/archive/%{version
 Source1:        ipahealthcheck.conf
 
 Patch0001:      0001-Remove-ipaclustercheck.patch
-Patch0002:      0002-Don-t-fail-if-a-service-name-cannot-be-looked-up-in-.patch
-Patch0003:      0003-Temporarily-disable-the-ipa-ods-exporter-service-sta.patch
-Patch0004:      0004-Skip-DogtagCertsConfigCheck-for-PKI-versions-11.5.0.patch
-Patch0005:      0005-test-Handle-PKI-11.5.0-not-storing-certs-in-CS.cfg.patch
-Patch0006:      0006-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
-Patch0007:      0007-Fix-some-file-mode-format-issues.patch
-Patch0008:      0008-Allow-WARNING-in-the-files-test.patch
-Patch0009:      0009-Check-user-provided-certificates-for-expiration.patch 
-Patch0010:      0010-Warn-if-krbLastSuccessfulAuth-replication-is-enabled.patch
-Patch0011:      0011-Warn-about-unexpected-umask.patch 
-Patch0012:      0012-Don-t-rely-on-order-in-trust-agent-controller-role-c.patch 
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -166,6 +155,13 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Tue Sep 23 2025 Rob Crittenden <rcritten@redhat.com> - 0.19-1
+- Update to 0.19 release
+  - Add a message if not a trust agent/controller (RHEL-116896)
+  - Check that expected NSS token matches the current FIPS state (RHEL-116897)
+  - Add /etc/pki/tls/certs/ directory to file checker (RHEL-116898)
+  - Check that allowed_uids in the SSSD config is valid (RHEL-79092)
+
 * Mon Jun 30 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-9
 - Don't rely on order in trust roles (RHEL-99531)
 
