@@ -16,8 +16,8 @@
 %bcond_without tests
 
 Name:           %{prefix}-healthcheck
-Version:        0.16
-Release:        11%{?dist}
+Version:        0.19
+Release:        1%{?dist}
 Summary:        Health check tool for %{productname}
 BuildArch:      noarch
 License:        GPL-3.0-or-later
@@ -26,25 +26,6 @@ Source0:        https://github.com/freeipa/freeipa-healthcheck/archive/%{version
 Source1:        ipahealthcheck.conf
 
 Patch0001:      0001-Remove-ipaclustercheck.patch
-Patch0002:      0002-Don-t-fail-if-a-service-name-cannot-be-looked-up-in-.patch
-Patch0003:      0003-Temporarily-disable-the-ipa-ods-exporter-service-sta.patch
-Patch0004:      0004-Skip-DogtagCertsConfigCheck-for-PKI-versions-11.5.0.patch
-Patch0005:      0005-test-Handle-PKI-11.5.0-not-storing-certs-in-CS.cfg.patch
-Patch0006:      0006-Handle-CS.cfg-file-missing-in-DogtagCertsConfigCheck.patch
-Patch0007:      0007-Fixes-log-file-permissions-as-per-CIS-benchmark.patch
-Patch0008:      0008-Fix-some-file-mode-format-issues.patch
-Patch0009:      0009-Allow-WARNING-in-the-files-test.patch
-Patch0010:      0010-Check-user-provided-certificates-for-expiration.patch
-Patch0011:      0011-Replace-fips-mode-setup.patch
-Patch0012:      0012-Mock-read_text-for-acme-unknown.patch
-Patch0013:      0013-Warn-missing-fips-file.patch
-Patch0014:      0014-Remove-unnecessary-timeout.patch
-Patch0015:      0015-Remove-unnecessary-check.patch
-Patch0016:      0016-Warn-if-krbLastSuccessfulAuth-replication-is-enabled.patch
-Patch0017:      0017-Warn-about-unexpected-umask.patch
-Patch0018:      0018-IPAOpenSSLChainValidation-ignore-default-trust-store.patch
-Patch0019:      0019-Compatibility-fix-for-PyCA-cryptography-42.0.0.patch
-Patch0020:      0020-Don-t-rely-on-order-in-trust-agent-controller-role-c.patch
 
 Requires:       %{name}-core = %{version}-%{release}
 Requires:       %{prefix}-server
@@ -174,6 +155,13 @@ PYTHONPATH=src PATH=$PATH:$RPM_BUILD_ROOT/usr/bin pytest-3 tests/test_*
 
 
 %changelog
+* Tue Sep 23 2025 Rob Crittenden <rcritten@redhat.com> - 0.19-1
+- Update to 0.19 release
+  - Add a message if not a trust agent/controller (RHEL-112752)
+  - Check that expected NSS token matches the current FIPS state (RHEL-104144)
+  - Add /etc/pki/tls/certs/ directory to file checker (RHEL-94649)
+  - Check that allowed_uids in the SSSD config is valid (RHEL-116895)
+
 * Wed Jun 25 2025 Rob Crittenden <rcritten@redhat.com> - 0.16-11
 - IPAOpenSSLChainValidation: ignore default trust store (RHEL-99999)
 - Don't rely on order in trust agent/controller role check (RHEL-99532)
